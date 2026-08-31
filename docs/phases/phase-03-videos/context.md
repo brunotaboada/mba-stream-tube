@@ -58,6 +58,9 @@ sources_mtime:
 | phase-03-videos/TD-12 | technical-decisions-phase-03-videos.md | Backend | Status Lifecycle & Failure Handling | decided | A (`draft`→`processing`→`ready`\|`failed`) | — |
 | phase-03-videos/TD-13 | technical-decisions-phase-03-videos.md | Backend | Job Payload Contract | decided | B (thin `{ videoId }`, idempotent) | — |
 | phase-03-videos/TD-14 | technical-decisions-phase-03-videos.md | Backend | Metadata Persistence Shape | decided | C (discrete columns + raw `jsonb`) | — |
+| phase-03-videos/TD-15 | technical-decisions-phase-03-videos.md | Backend | Accepted Upload Formats and Limit Enforcement | decided | B (allowlist + ceiling at initiate; ffprobe authority) | — |
+| phase-03-videos/TD-16 | technical-decisions-phase-03-videos.md | Backend | Access Policy for Playback and Download | decided | A (both anonymous, gated on `ready`) | — |
+| phase-03-videos/TD-17 | technical-decisions-phase-03-videos.md | Backend | User to Channel Resolution | decided | B (`ChannelsService.findByUserId`) | — |
 
 _Source files:_
 
@@ -69,13 +72,13 @@ _Source files:_
 |------------|------------|
 | Serviço de armazenamento de arquivos (vídeos e thumbnails) | phase-03-videos/TD-02 |
 | Serviço de processamento em segundo plano (filas) | phase-03-videos/TD-01, phase-03-videos/TD-05, phase-03-videos/TD-13 |
-| Upload de vídeos com suporte a arquivos de até 10GB sem impacto na performance | phase-03-videos/TD-03 |
-| Pré-cadastro automático do vídeo como rascunho ao iniciar o upload | phase-03-videos/TD-04, phase-03-videos/TD-12 |
+| Upload de vídeos com suporte a arquivos de até 10GB sem impacto na performance | phase-03-videos/TD-03, phase-03-videos/TD-15 |
+| Pré-cadastro automático do vídeo como rascunho ao iniciar o upload | phase-03-videos/TD-04, phase-03-videos/TD-12, phase-03-videos/TD-17 |
 | Processamento automático do vídeo após upload (extração de duração e metadados) | phase-03-videos/TD-04, phase-03-videos/TD-06, phase-03-videos/TD-07, phase-03-videos/TD-12, phase-03-videos/TD-14 |
 | Geração automática de thumbnail a partir de um frame do vídeo | phase-03-videos/TD-06, phase-03-videos/TD-07, phase-03-videos/TD-08 |
 | URL única por vídeo, sem conflito com outros vídeos | phase-03-videos/TD-09 |
-| Reprodução via streaming (sem necessidade de download completo) | phase-03-videos/TD-10 |
-| Download do vídeo pelo usuário | phase-03-videos/TD-11 |
+| Reprodução via streaming (sem necessidade de download completo) | phase-03-videos/TD-10, phase-03-videos/TD-16 |
+| Download do vídeo pelo usuário | phase-03-videos/TD-11, phase-03-videos/TD-16 |
 
 ## Decisions Detail
 
@@ -160,6 +163,24 @@ _Source files:_
 ### phase-03-videos/TD-14
 
 **Recommendation:** Hybrid — duration and dimensions are needed on ordinary listing queries and deserve real columns, while retaining the raw `ffprobe` document costs little and preserves information that would otherwise require re-probing multi-GB files. The extraction step writes both in one operation.
+
+**Libraries:** —
+
+### phase-03-videos/TD-15
+
+**Recommendation:** Declared type at initiate, verified by `ffprobe` during processing — enforces each constraint where enforcement is actually possible: an allowlist and a size ceiling gate the signing step cheaply, and the worker's probe is the authority on whether the bytes are really a video, reported through the existing status lifecycle. Accepted set is `video/mp4`, `video/quicktime`, `video/x-matroska`, `video/webm`, `video/x-msvideo`, configurable; maximum size is configuration defaulting to 10GB. _(resolves AMB/MD issue `MD-1`)_
+
+**Libraries:** —
+
+### phase-03-videos/TD-16
+
+**Recommendation:** Both streaming and download anonymous — download is a delivery variant of an object anonymous users may already stream, so restricting it would protect nothing while contradicting the platform's anonymous-viewing principle. Both endpoints are gated on video state rather than identity: only `ready` resolves, anything else answers 404. Mutating endpoints stay authenticated and owner-scoped. _(resolves `AMB-1`)_
+
+**Libraries:** —
+
+### phase-03-videos/TD-17
+
+**Recommendation:** Add `findByUserId` to `ChannelsService` — closes the gap in the module that owns the data, leaves the Fase 02 auth contract and existing sessions untouched, and keeps the video module free of another domain's schema. `ChannelsModule` already exports `ChannelsService`, so wiring is an import. _(resolves `DG-1`)_
 
 **Libraries:** —
 

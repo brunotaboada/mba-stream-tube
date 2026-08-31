@@ -454,6 +454,99 @@ _Subprojects in scope:_
 
 ---
 
+## TD-15: Accepted Upload Formats and Limit Enforcement Points
+
+**Scope:** Backend
+
+**Capability:** Upload de vídeos com suporte a arquivos de até 10GB sem impacto na performance
+
+**Context:** Raised as `MD-1` by `/plan-validate`. TD-03 keeps the API out of the byte path, which means the API cannot inspect content while it is being uploaded. Something must still bound what enters the system, and the values involved are a genuine cross-component contract: they appear in the request DTO, the Joi environment schema, the storage key's file extension, and the worker's probe step. The question is which formats are accepted and, given that the API never sees the bytes, where each limit is actually enforced.
+
+**Options:**
+
+### Option A: Trust the client-declared content type only
+- The initiate request declares a MIME type; the API validates it against an allowlist and signs the upload.
+- **Pros:** Trivial; one validation in the DTO. No processing cost.
+- **Cons:** The declaration is unverified — a client can claim `video/mp4` and upload anything at all, including something that is not a video. Nothing ever confirms the object matches its declaration, so bad data reaches storage and is only discovered when FFmpeg fails on it, with a confusing error.
+
+### Option B: Declared type at initiate, verified by `ffprobe` during processing
+- The initiate request declares a content type checked against an allowlist, and the declared size is checked against the configured 10GB maximum, before any URL is signed. The worker then treats `ffprobe` as the authority: a file that does not probe as a decodable video moves the row to `failed` with a clear reason.
+- **Pros:** Puts each check where it can actually be enforced — cheap declarative rejection up front so obviously wrong requests never get signed URLs, and real content verification where the bytes finally are, in the worker. `ffprobe` failing to find a video stream is a definitive answer that no header inspection can match. The failure surfaces through the status lifecycle that TD-12 already defines, so it needs no new mechanism. Storage-side enforcement of the true size is available as well, because a presigned part URL is bound to the content length it was signed for.
+- **Cons:** A junk file still occupies storage until it is probed and rejected. Two enforcement points to understand rather than one.
+
+### Option C: Verify content by inspecting bytes in the API before signing
+- The client sends a header sample which the API sniffs for magic bytes.
+- **Pros:** Rejects mismatched files before any large transfer.
+- **Cons:** Adds a round-trip and a byte-handling path to an API deliberately kept out of the data path. Magic-byte sniffing confirms only the container signature, not that the file is decodable, so the worker must probe anyway — the check is additive complexity, not a replacement.
+
+**Recommendation:** **Declared type at initiate, verified by `ffprobe` during processing** — it enforces each constraint where enforcement is actually possible: an allowlist and a size ceiling gate the signing step cheaply, and the worker's probe is the authority on whether the bytes are really a video, reported through the existing status lifecycle. The accepted set is the common web-delivery container formats (`video/mp4`, `video/quicktime`, `video/x-matroska`, `video/webm`, `video/x-msvideo`), configurable rather than hard-coded, and the maximum size is a configuration value defaulting to 10GB so the ceiling the phase promises is expressed in exactly one place.
+
+**Decision:** B (allowlist + size ceiling at initiate; `ffprobe` as content authority during processing)
+
+---
+
+## TD-16: Access Policy for Playback and Download
+
+**Scope:** Backend
+
+**Capability:** Reprodução via streaming (sem necessidade de download completo); Download do vídeo pelo usuário
+
+**Context:** Raised as `AMB-1` by `/plan-validate`. `docs/project-plan.md` § Principais Características establishes that "qualquer pessoa pode assistir vídeos sem cadastro", which settles streaming. It does not settle download: "Download do vídeo pelo usuário" reads equally as any viewer saving a video they can already watch, or as the owner retrieving their own master file. The two readings produce different authorization matrices, and the visibility model that would otherwise decide this (público/unlisted) does not arrive until Fase 04.
+
+**Options:**
+
+### Option A: Both streaming and download are anonymous
+- Any caller may stream or download a video that has reached `ready`.
+- **Pros:** Consistent with the platform's stated anonymous-viewing principle, and treats download as what it technically is — a delivery variant of the same object that anonymous users are already entitled to stream. A determined viewer can reconstruct the file from range requests anyway, so restricting download while allowing streaming protects nothing. Keeps this phase free of a visibility model it has not yet defined, leaving Fase 04 free to introduce público/unlisted without unwinding a decision made early.
+- **Cons:** Offers no way to publish a video as stream-only, should that ever be wanted.
+
+### Option B: Streaming anonymous, download owner-only
+- Anyone may watch; only the owning channel may download.
+- **Pros:** Preserves a distinction between casual viewing and file acquisition.
+- **Cons:** The distinction is illusory given anonymous range access to the same object. Invents a restriction the project plan never asks for, and does so before the visibility model exists to give it meaning.
+
+### Option C: Both require authentication
+- Only logged-in users may stream or download.
+- **Pros:** Simple, uniform rule.
+- **Cons:** Directly contradicts the project's stated anonymous-viewing principle. Rejected on those grounds alone.
+
+**Recommendation:** **Both anonymous** — download is a delivery variant of an object anonymous users may already stream, so restricting it would protect nothing while contradicting the platform's anonymous-viewing principle. Both endpoints remain guarded on video state rather than identity: only a video in `ready` resolves, and anything else answers 404 so that draft, processing and failed videos are indistinguishable from non-existent ones. Mutating endpoints (initiate, complete, abort) stay authenticated and owner-scoped. When Fase 04 introduces público/unlisted, both endpoints gain the same visibility check.
+
+**Decision:** A (streaming and download both anonymous, gated on `ready` state)
+
+---
+
+## TD-17: User → Channel Resolution for Video Ownership
+
+**Scope:** Backend
+
+**Capability:** Pré-cadastro automático do vídeo como rascunho ao iniciar o upload
+
+**Context:** Raised as `DG-1` by `/plan-validate`. A video belongs to a channel, but the request carries a user. Verified against the code, Fase 02 left no path between the two: `src/channels/channels.service.ts` exposes only `createChannel(userId, email)`, and `src/auth/auth.types.ts` defines the JWT payload as `{ sub, email }` with no channel identifier. The inherited convention established when `ChannelsModule` was extracted forbids one module from reaching into another domain's entities, so the video module cannot simply query the `Channel` repository itself.
+
+**Options:**
+
+### Option A: Add `channelId` to the JWT payload
+- Login embeds the channel id in the token; the video module reads it from the request.
+- **Pros:** No database read on the upload path; the value arrives with the request.
+- **Cons:** Reopens Fase 02's auth contract, which is out of this phase's scope, and every already-issued token lacks the claim, so all existing sessions break on deploy. Bakes a mutable relationship into an immutable credential — a token would keep asserting a channel id that later changes. Also touches the refresh path and its tests, widening the blast radius well beyond this phase.
+
+### Option B: Add a read method to `ChannelsService`
+- `ChannelsModule` gains `findByUserId(userId)`, and the video module injects `ChannelsService` to resolve the owning channel.
+- **Pros:** Respects the module-ownership convention exactly — reads of a channel are answered by the module that owns channels, and the video module never touches the `Channel` repository. `ChannelsModule` already exports `ChannelsService`, so wiring is an import. The auth contract is untouched, so no session breaks. One small, directly unit-testable method, and the lookup always reflects current state.
+- **Cons:** One database read per upload initiation — negligible next to signing and a multi-GB transfer.
+
+### Option C: Let the video module query the `Channel` repository directly
+- `VideosModule` registers `TypeOrmModule.forFeature([Channel])` and queries it.
+- **Pros:** No change to `ChannelsModule`.
+- **Cons:** Violates the inherited single-responsibility convention that SI-02.15 was written specifically to establish. Spreads knowledge of the channel schema into a second module, which is exactly the coupling that extraction removed.
+
+**Recommendation:** **Add a read method to `ChannelsService`** — it closes the gap in the module that owns the data, leaves the Fase 02 auth contract and existing sessions untouched, and keeps the video module free of another domain's schema. The addition is a single method on a service already exported by its module.
+
+**Decision:** B (`ChannelsService.findByUserId`, injected into the video module)
+
+---
+
 ## Decisions Summary
 
 | ID | Decision | Recommendation | Choice |
@@ -472,3 +565,6 @@ _Subprojects in scope:_
 | TD-12 | Status Lifecycle & Failure Handling | `draft`→`processing`→`ready`\|`failed` | A (four states, bounded retries) |
 | TD-13 | Job Payload Contract | Thin payload, idempotent handler | B (thin `{ videoId }`) |
 | TD-14 | Metadata Persistence Shape | Discrete columns + raw `jsonb` | C (hybrid) |
+| TD-15 | Accepted Upload Formats and Limits | Allowlist + ceiling at initiate, ffprobe authority | B (declared type + ffprobe verification) |
+| TD-16 | Access Policy for Playback and Download | Both anonymous, gated on `ready` | A (both anonymous) |
+| TD-17 | User to Channel Resolution | Read method on ChannelsService | B (`ChannelsService.findByUserId`) |
