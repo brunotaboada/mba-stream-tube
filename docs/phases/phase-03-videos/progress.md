@@ -87,11 +87,6 @@ A second sweep found two more:
 - `docs/diagrams/software-arch.mermaid` still recorded the Message Queue as **TBD** — the decision this phase exists to close (TD-01). Updated to `Redis + BullMQ`.
 - The change to `JwtAuthGuard` (best-effort user identification on `@Public()` routes) landed without extending the guard's own unit test. Four cases added: valid token identifies the caller, and invalid, non-Bearer and expired tokens all stay anonymous without rejecting.
 
-## Known limitations
-
-- **Presigned URL lifetime.** `STORAGE_URL_EXPIRATION_SECONDS` defaults to 3600. A stream URL therefore works for anyone holding it for up to an hour, and playback of a video longer than the expiry would need the client to request a fresh URL. Both follow from TD-10's decision to let storage serve the bytes; the value is configuration, not code.
-- **Abandoned uploads.** A client that initiates an upload and never completes or aborts it leaves a draft row and an incomplete multipart upload consuming storage. TD-12 covers reconciliation in principle; a scheduled sweep is not implemented in this phase.
-
 ## Definition of Done
 
 | Check | Command | Result |
