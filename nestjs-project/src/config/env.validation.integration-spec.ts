@@ -67,6 +67,7 @@ describe('envValidationSchema — phase 03 storage, queue and video variables', 
     expect(error).toBeUndefined();
     expect(value).toMatchObject({
       STORAGE_ENDPOINT: 'http://minio:9000',
+      STORAGE_PUBLIC_ENDPOINT: 'http://minio:9000',
       STORAGE_VIDEOS_BUCKET: 'streamtube-videos',
       STORAGE_THUMBNAILS_BUCKET: 'streamtube-thumbnails',
       STORAGE_URL_EXPIRATION_SECONDS: 3600,
