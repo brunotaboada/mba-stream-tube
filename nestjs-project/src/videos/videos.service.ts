@@ -95,7 +95,9 @@ export class VideosService {
       video.storage_key,
       dto.contentType,
     );
-    const partCount = Math.ceil(dto.sizeBytes / this.config.uploadPartSizeBytes);
+    const partCount = Math.ceil(
+      dto.sizeBytes / this.config.uploadPartSizeBytes,
+    );
     const parts = await this.storageService.getPartUploadUrls(
       video.storage_key,
       uploadId,
@@ -218,7 +220,10 @@ export class VideosService {
     await this.videoRepository.remove(video);
   }
 
-  private async findOwnedVideo(userId: string, videoId: string): Promise<Video> {
+  private async findOwnedVideo(
+    userId: string,
+    videoId: string,
+  ): Promise<Video> {
     const channel = await this.channelsService.findByUserId(userId);
     if (!channel) {
       throw new ChannelNotFoundException();

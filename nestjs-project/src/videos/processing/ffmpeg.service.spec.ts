@@ -33,10 +33,21 @@ describe('FfmpegService', () => {
     // check real values rather than fixture bytes committed to the repo.
     await execFileAsync(ffmpegInstaller.path, [
       '-y',
-      '-f', 'lavfi', '-i', 'testsrc=duration=5:size=640x480:rate=30',
-      '-f', 'lavfi', '-i', 'sine=frequency=440:duration=5',
-      '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
-      '-c:a', 'aac', '-shortest',
+      '-f',
+      'lavfi',
+      '-i',
+      'testsrc=duration=5:size=640x480:rate=30',
+      '-f',
+      'lavfi',
+      '-i',
+      'sine=frequency=440:duration=5',
+      '-c:v',
+      'libx264',
+      '-pix_fmt',
+      'yuv420p',
+      '-c:a',
+      'aac',
+      '-shortest',
       samplePath,
     ]);
   }, 180000);

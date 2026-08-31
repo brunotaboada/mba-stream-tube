@@ -25,7 +25,8 @@ export class InitiateUploadDto {
 
   @ApiProperty({
     example: 1073741824,
-    description: 'Declared size in bytes; must not exceed the configured maximum',
+    description:
+      'Declared size in bytes; must not exceed the configured maximum',
   })
   @IsInt()
   @Min(1)

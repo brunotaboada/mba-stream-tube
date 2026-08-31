@@ -32,9 +32,7 @@ export const envValidationSchema = Joi.object({
   REDIS_HOST: Joi.string().default('redis'),
   REDIS_PORT: Joi.number().port().default(6379),
   VIDEO_MAX_SIZE_BYTES: Joi.number().positive().default(10737418240),
-  VIDEO_UPLOAD_PART_SIZE_BYTES: Joi.number()
-    .min(5242880)
-    .default(104857600),
+  VIDEO_UPLOAD_PART_SIZE_BYTES: Joi.number().min(5242880).default(104857600),
   VIDEO_ALLOWED_MIME_TYPES: Joi.string().default(
     'video/mp4,video/quicktime,video/x-matroska,video/webm,video/x-msvideo',
   ),

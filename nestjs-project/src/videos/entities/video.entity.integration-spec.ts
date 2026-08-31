@@ -66,7 +66,9 @@ describe('Video entity (integration)', () => {
   it('defaults status to draft', async () => {
     const channel = await createChannel();
 
-    const saved = await videoRepository.save(buildVideo(channel, 'pub_draft_1'));
+    const saved = await videoRepository.save(
+      buildVideo(channel, 'pub_draft_1'),
+    );
 
     expect(saved.status).toBe(VideoStatus.DRAFT);
   });

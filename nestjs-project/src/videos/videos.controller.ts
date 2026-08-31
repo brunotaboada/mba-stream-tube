@@ -88,8 +88,7 @@ export class VideosController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Abandon a video upload',
-    description:
-      'Aborts the multipart upload and discards the draft video.',
+    description: 'Aborts the multipart upload and discards the draft video.',
   })
   @ApiParam({ name: 'id', description: 'Internal video id (uuid)' })
   @ApiResponse({ status: 204, description: 'Upload aborted' })
@@ -131,7 +130,10 @@ export class VideosController {
       'Content, so playback starts without downloading the whole file.',
   })
   @ApiResponse({ status: 302, description: 'Redirect to the media URL' })
-  @ApiResponse({ status: 404, description: 'VIDEO_NOT_FOUND / VIDEO_NOT_READY' })
+  @ApiResponse({
+    status: 404,
+    description: 'VIDEO_NOT_FOUND / VIDEO_NOT_READY',
+  })
   async stream(
     @Param('publicId') publicId: string,
   ): Promise<{ url: string; statusCode: number }> {
@@ -149,7 +151,10 @@ export class VideosController {
       'Content-Disposition, so the browser saves the file.',
   })
   @ApiResponse({ status: 302, description: 'Redirect to the download URL' })
-  @ApiResponse({ status: 404, description: 'VIDEO_NOT_FOUND / VIDEO_NOT_READY' })
+  @ApiResponse({
+    status: 404,
+    description: 'VIDEO_NOT_FOUND / VIDEO_NOT_READY',
+  })
   async download(
     @Param('publicId') publicId: string,
   ): Promise<{ url: string; statusCode: number }> {

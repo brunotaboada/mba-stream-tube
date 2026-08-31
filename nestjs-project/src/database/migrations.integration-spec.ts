@@ -20,7 +20,10 @@ const MANAGED_TABLES = [
 // DROP TABLE ... CASCADE does not drop PostgreSQL enum types. A type left
 // behind by a previous run makes the next CREATE TYPE fail, so enum types
 // must be dropped explicitly alongside their tables.
-const MANAGED_ENUM_TYPES = ['videos_status_enum', 'verification_tokens_type_enum'];
+const MANAGED_ENUM_TYPES = [
+  'videos_status_enum',
+  'verification_tokens_type_enum',
+];
 
 describe('Database migrations (integration)', () => {
   let dataSource: DataSource;

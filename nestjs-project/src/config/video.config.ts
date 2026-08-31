@@ -4,10 +4,7 @@ const DEFAULT_ALLOWED_MIME_TYPES =
   'video/mp4,video/quicktime,video/x-matroska,video/webm,video/x-msvideo';
 
 export default registerAs('video', () => ({
-  maxSizeBytes: parseInt(
-    process.env.VIDEO_MAX_SIZE_BYTES || '10737418240',
-    10,
-  ),
+  maxSizeBytes: parseInt(process.env.VIDEO_MAX_SIZE_BYTES || '10737418240', 10),
   uploadPartSizeBytes: parseInt(
     process.env.VIDEO_UPLOAD_PART_SIZE_BYTES || '104857600',
     10,

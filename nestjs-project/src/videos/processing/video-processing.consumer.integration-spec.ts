@@ -75,10 +75,21 @@ describe('VideoProcessingConsumer (integration)', () => {
     const samplePath = join(workDir, 'sample.mp4');
     await execFileAsync(ffmpegInstaller.path, [
       '-y',
-      '-f', 'lavfi', '-i', 'testsrc=duration=4:size=320x240:rate=25',
-      '-f', 'lavfi', '-i', 'sine=frequency=440:duration=4',
-      '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
-      '-c:a', 'aac', '-shortest',
+      '-f',
+      'lavfi',
+      '-i',
+      'testsrc=duration=4:size=320x240:rate=25',
+      '-f',
+      'lavfi',
+      '-i',
+      'sine=frequency=440:duration=4',
+      '-c:v',
+      'libx264',
+      '-pix_fmt',
+      'yuv420p',
+      '-c:a',
+      'aac',
+      '-shortest',
       samplePath,
     ]);
     sampleVideo = await readFile(samplePath);
@@ -133,7 +144,10 @@ describe('VideoProcessingConsumer (integration)', () => {
     return video;
   }
 
-  function makeJob(videoId: string, attemptsMade = 3): Job<{ videoId: string }> {
+  function makeJob(
+    videoId: string,
+    attemptsMade = 3,
+  ): Job<{ videoId: string }> {
     return {
       data: { videoId },
       attemptsMade,

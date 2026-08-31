@@ -47,12 +47,14 @@ function makeVideo(overrides: Partial<Video> = {}): Video {
   } as Video;
 }
 
-function build(overrides: {
-  repository?: Record<string, jest.Mock>;
-  channels?: Record<string, jest.Mock>;
-  storage?: Record<string, unknown>;
-  producer?: Record<string, jest.Mock>;
-} = {}) {
+function build(
+  overrides: {
+    repository?: Record<string, jest.Mock>;
+    channels?: Record<string, jest.Mock>;
+    storage?: Record<string, unknown>;
+    producer?: Record<string, jest.Mock>;
+  } = {},
+) {
   const repository = {
     create: jest.fn((data: Partial<Video>) => makeVideo(data)),
     save: jest.fn((video: Video) => Promise.resolve(video)),
@@ -135,9 +137,9 @@ describe('VideosService', () => {
         channels: { findByUserId: jest.fn().mockResolvedValue(null) },
       });
 
-      await expect(service.initiateUpload('user-1', dto)).rejects.toBeInstanceOf(
-        ChannelNotFoundException,
-      );
+      await expect(
+        service.initiateUpload('user-1', dto),
+      ).rejects.toBeInstanceOf(ChannelNotFoundException);
     });
 
     it('requests one presigned part per configured chunk, rounding up', async () => {
@@ -201,7 +203,9 @@ describe('VideosService', () => {
         .mockImplementation((video: Video) => Promise.resolve(video));
       const { service, repository } = build({ repository: { save } });
 
-      await expect(service.initiateUpload('user-1', dto)).resolves.toBeDefined();
+      await expect(
+        service.initiateUpload('user-1', dto),
+      ).resolves.toBeDefined();
       expect(repository.create).toHaveBeenCalledTimes(2);
     });
 
@@ -333,7 +337,9 @@ describe('VideosService', () => {
       'hides a video in %s from public resolution',
       async (status) => {
         const { service } = build({
-          repository: { findOne: jest.fn().mockResolvedValue(makeVideo({ status })) },
+          repository: {
+            findOne: jest.fn().mockResolvedValue(makeVideo({ status })),
+          },
         });
 
         await expect(

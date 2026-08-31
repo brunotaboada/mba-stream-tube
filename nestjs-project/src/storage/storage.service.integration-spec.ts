@@ -12,7 +12,9 @@ describe('StorageService (integration)', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [ConfigModule.forRoot({ isGlobal: true, load: [storageConfig] })],
+      imports: [
+        ConfigModule.forRoot({ isGlobal: true, load: [storageConfig] }),
+      ],
       providers: [StorageService],
     }).compile();
 
@@ -121,7 +123,10 @@ describe('StorageService (integration)', () => {
       const url = await storage.getPresignedDownloadUrl(
         storage.videosBucket,
         key,
-        { downloadFilename: 'my video.mp4', contentType: 'application/octet-stream' },
+        {
+          downloadFilename: 'my video.mp4',
+          contentType: 'application/octet-stream',
+        },
       );
       const response = await fetch(url);
 
@@ -159,9 +164,17 @@ describe('StorageService (integration)', () => {
       const key = track(storage.thumbnailsBucket, `it-thumb-${Date.now()}.jpg`);
       const body = Buffer.from('fake-jpeg-bytes');
 
-      await storage.putObject(storage.thumbnailsBucket, key, body, 'image/jpeg');
+      await storage.putObject(
+        storage.thumbnailsBucket,
+        key,
+        body,
+        'image/jpeg',
+      );
 
-      const stream = await storage.getObjectStream(storage.thumbnailsBucket, key);
+      const stream = await storage.getObjectStream(
+        storage.thumbnailsBucket,
+        key,
+      );
       const chunks: Buffer[] = [];
       for await (const chunk of stream) {
         chunks.push(chunk as Buffer);
@@ -174,7 +187,10 @@ describe('StorageService (integration)', () => {
         storage.thumbnailsBucket,
         `it-public-${Date.now()}.jpg`,
       );
-      const videoKey = track(storage.videosBucket, `it-private-${Date.now()}.bin`);
+      const videoKey = track(
+        storage.videosBucket,
+        `it-private-${Date.now()}.bin`,
+      );
       await storage.putObject(
         storage.thumbnailsBucket,
         thumbKey,

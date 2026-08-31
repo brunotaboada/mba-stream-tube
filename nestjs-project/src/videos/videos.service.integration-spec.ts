@@ -110,7 +110,9 @@ describe('VideosService (integration)', () => {
       sizeBytes: 1024,
     });
 
-    const stored = await videoRepository.findOneByOrFail({ id: result.videoId });
+    const stored = await videoRepository.findOneByOrFail({
+      id: result.videoId,
+    });
     expect(stored.status).toBe(VideoStatus.DRAFT);
     expect(stored.public_id).toHaveLength(11);
     expect(stored.storage_key).toBe(`${stored.id}/source.mp4`);
@@ -147,7 +149,10 @@ describe('VideosService (integration)', () => {
     expect(completed.status).toBe(VideoStatus.PROCESSING);
     expect(completed.upload_id).toBeNull();
 
-    const url = await storage.getPresignedDownloadUrl(storage.videosBucket, key);
+    const url = await storage.getPresignedDownloadUrl(
+      storage.videosBucket,
+      key,
+    );
     const downloaded = Buffer.from(await (await fetch(url)).arrayBuffer());
     expect(downloaded.length).toBe(first.length + second.length);
 

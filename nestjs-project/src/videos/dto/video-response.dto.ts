@@ -45,7 +45,10 @@ export class VideoResponseDto {
   @ApiProperty()
   createdAt: Date;
 
-  static fromEntity(video: Video, thumbnailUrl: string | null): VideoResponseDto {
+  static fromEntity(
+    video: Video,
+    thumbnailUrl: string | null,
+  ): VideoResponseDto {
     return {
       publicId: video.public_id,
       title: video.title,
