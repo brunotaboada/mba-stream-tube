@@ -31,7 +31,10 @@ describe('StorageService (integration)', () => {
   }
 
   async function uploadPart(url: string, body: Buffer): Promise<string> {
-    const response = await fetch(url, { method: 'PUT', body });
+    const response = await fetch(url, {
+      method: 'PUT',
+      body: new Uint8Array(body),
+    });
     expect(response.status).toBe(200);
     const etag = response.headers.get('etag');
     expect(etag).toBeTruthy();
