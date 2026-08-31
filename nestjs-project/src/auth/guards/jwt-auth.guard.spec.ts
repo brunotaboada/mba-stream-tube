@@ -52,6 +52,56 @@ describe('JwtAuthGuard', () => {
     await expect(guard.canActivate(ctx)).resolves.toBe(true);
   });
 
+  it('identifies the caller on a @Public() route when a valid token is present', async () => {
+    mockReflector.getAllAndOverride.mockReturnValue(true);
+    const token = jwtService.sign({ sub: 'user-1', email: 'a@example.com' });
+    const request: Record<string, unknown> = {
+      headers: { authorization: `Bearer ${token}` },
+    };
+
+    await expect(guard.canActivate(makeContext(request))).resolves.toBe(true);
+
+    expect(request.user).toMatchObject({
+      sub: 'user-1',
+      email: 'a@example.com',
+    });
+  });
+
+  it('stays anonymous on a @Public() route when the token is invalid', async () => {
+    mockReflector.getAllAndOverride.mockReturnValue(true);
+    const request: Record<string, unknown> = {
+      headers: { authorization: 'Bearer not-a-real-token' },
+    };
+
+    // A public route must never reject: an unusable token is simply ignored.
+    await expect(guard.canActivate(makeContext(request))).resolves.toBe(true);
+    expect(request.user).toBeUndefined();
+  });
+
+  it('stays anonymous on a @Public() route when the scheme is not Bearer', async () => {
+    mockReflector.getAllAndOverride.mockReturnValue(true);
+    const request: Record<string, unknown> = {
+      headers: { authorization: 'Basic dXNlcjpwYXNz' },
+    };
+
+    await expect(guard.canActivate(makeContext(request))).resolves.toBe(true);
+    expect(request.user).toBeUndefined();
+  });
+
+  it('stays anonymous on a @Public() route when the token is expired', async () => {
+    mockReflector.getAllAndOverride.mockReturnValue(true);
+    const expired = jwtService.sign(
+      { sub: 'user-1', email: 'a@example.com' },
+      { expiresIn: '-1s' },
+    );
+    const request: Record<string, unknown> = {
+      headers: { authorization: `Bearer ${expired}` },
+    };
+
+    await expect(guard.canActivate(makeContext(request))).resolves.toBe(true);
+    expect(request.user).toBeUndefined();
+  });
+
   it('passes with a valid JWT and attaches payload to request.user', async () => {
     const token = jwtService.sign({ sub: 'user-1', email: 'a@example.com' });
     const request: Record<string, unknown> = {

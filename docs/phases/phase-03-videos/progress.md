@@ -73,11 +73,30 @@
 - **Tests:** no tests — `npm run lint` exits 0
 - **Observations:** The base repository shipped with `npm run lint` failing on 150 pre-existing errors in Phase 01/02 code, so its own Definition of Done could not pass. Production-code errors were fixed by typing the Postgres driver error in `channels.service.ts` and replacing the bare `Function` type in `create-test-data-source.ts`; two genuine unused declarations were deleted. The `no-unsafe-*` family and `unbound-method` were downgraded to warnings **for test files only**, consistent with how the project already treats `no-unsafe-argument` and `no-explicit-any`. Production code keeps them as errors.
 
+### Post-implementation review
+
+A verification pass against the plan found four items the first pass had left undone, all since closed:
+
+- The public video endpoint returned 404 to **everyone** for a non-ready video, contradicting the Authorization Matrix and leaving the owner unable to poll their own upload. Fixed in SI-03.11.
+- The consumer's scratch-directory cleanup, declared in SI-03.9's test table, had no test.
+- SI-03.13's acceptance criterion that the authorization matrix be "exercised by tests, not merely documented" was unmet, as was the throttler check.
+- All nineteen Deliverables checkboxes were still unticked.
+
+A second sweep found two more:
+
+- `docs/diagrams/software-arch.mermaid` still recorded the Message Queue as **TBD** — the decision this phase exists to close (TD-01). Updated to `Redis + BullMQ`.
+- The change to `JwtAuthGuard` (best-effort user identification on `@Public()` routes) landed without extending the guard's own unit test. Four cases added: valid token identifies the caller, and invalid, non-Bearer and expired tokens all stay anonymous without rejecting.
+
+## Known limitations
+
+- **Presigned URL lifetime.** `STORAGE_URL_EXPIRATION_SECONDS` defaults to 3600. A stream URL therefore works for anyone holding it for up to an hour, and playback of a video longer than the expiry would need the client to request a fresh URL. Both follow from TD-10's decision to let storage serve the bytes; the value is configuration, not code.
+- **Abandoned uploads.** A client that initiates an upload and never completes or aborts it leaves a draft row and an incomplete multipart upload consuming storage. TD-12 covers reconciliation in principle; a scheduled sweep is not implemented in this phase.
+
 ## Definition of Done
 
 | Check | Command | Result |
 |-------|---------|--------|
-| Unit + integration | `npm test -- --runInBand` | 245/245 passing, 36 suites |
+| Unit + integration | `npm test -- --runInBand` | 249/249 passing, 36 suites |
 | E2E | `npm run test:e2e` | 77/77 passing, 4 suites |
 | Type check | `npx tsc --noEmit` | exit 0 |
 | Lint | `npm run lint` | exit 0 |
