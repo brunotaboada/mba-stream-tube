@@ -1,9 +1,7 @@
-FROM node:25.6.0-slim
-
-RUN apt update && apt install -y procps curl
+FROM node:25.6.0
 
 WORKDIR /home/node/app
 
 USER node
 
-CMD [ "tail", "-f", "/dev/null" ] 
+CMD [ "tail", "-f", "/dev/null" ]
