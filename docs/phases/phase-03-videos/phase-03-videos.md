@@ -343,6 +343,7 @@ Deliver the complete video ingestion pipeline — object storage, a background p
 **Acceptance criteria:**
 
 - A `ready` video is retrievable by its 11-character public id without authentication
+- A video that is not `ready` is returned to the channel that owns it (so the owner can poll upload progress) and 404s for everyone else
 - The payload never leaks the internal id, storage keys or the raw `ffprobe` document
 - Two videos never share a public id (unique index enforced at the database level)
 
@@ -655,22 +656,22 @@ Linearized implementation order: SI-03.1 → SI-03.2, SI-03.3, SI-03.4, SI-03.5,
 
 ## Deliverables
 
-- [ ] MinIO object storage running in Docker Compose with a private videos bucket and a public-read thumbnails bucket, created idempotently at startup
-- [ ] Redis and a BullMQ `video-processing` queue running in Docker Compose
-- [ ] A dedicated `video-worker` container consuming the queue, isolated from the API process
-- [ ] Upload of files up to 10GB via S3 multipart with presigned part URLs — video bytes never pass through the API
-- [ ] Automatic pre-registration of the video as `draft` when the upload is initiated
-- [ ] Automatic processing after upload: duration, dimensions, codecs, bitrate and the raw `ffprobe` document persisted
-- [ ] Automatic thumbnail generated from a frame at 10% of the video's duration and stored in the thumbnails bucket
-- [ ] Unique 11-character public URL per video, enforced by a database unique index
-- [ ] Streaming that begins without a full download — storage answers `206 Partial Content` for ranged requests
-- [ ] Download with a correct, tamper-proof `Content-Disposition` filename
-- [ ] Status lifecycle `draft` → `processing` → `ready` | `failed` persisted, with bounded retries and a stored failure reason
-- [ ] `videos` table created by a reviewed migration, linked to `channels`
-- [ ] `ChannelsService.findByUserId` closing the Fase 02 dependency gap
-- [ ] Video endpoints documented in `openapi.json`
-- [ ] Inherited lint debt cleared so `npm run lint` exits 0
-- [ ] All SI tests pass (`docker compose exec nestjs-api npm test -- --runInBand`)
-- [ ] E2E tests pass (`docker compose exec nestjs-api npm run test:e2e`)
-- [ ] Type check passes (`docker compose exec nestjs-api npx tsc --noEmit`)
-- [ ] Lint passes (`docker compose exec nestjs-api npm run lint`)
+- [x] MinIO object storage running in Docker Compose with a private videos bucket and a public-read thumbnails bucket, created idempotently at startup
+- [x] Redis and a BullMQ `video-processing` queue running in Docker Compose
+- [x] A dedicated `video-worker` container consuming the queue, isolated from the API process
+- [x] Upload of files up to 10GB via S3 multipart with presigned part URLs — video bytes never pass through the API
+- [x] Automatic pre-registration of the video as `draft` when the upload is initiated
+- [x] Automatic processing after upload: duration, dimensions, codecs, bitrate and the raw `ffprobe` document persisted
+- [x] Automatic thumbnail generated from a frame at 10% of the video's duration and stored in the thumbnails bucket
+- [x] Unique 11-character public URL per video, enforced by a database unique index
+- [x] Streaming that begins without a full download — storage answers `206 Partial Content` for ranged requests
+- [x] Download with a correct, tamper-proof `Content-Disposition` filename
+- [x] Status lifecycle `draft` → `processing` → `ready` | `failed` persisted, with bounded retries and a stored failure reason
+- [x] `videos` table created by a reviewed migration, linked to `channels`
+- [x] `ChannelsService.findByUserId` closing the Fase 02 dependency gap
+- [x] Video endpoints documented in `openapi.json`
+- [x] Inherited lint debt cleared so `npm run lint` exits 0
+- [x] All SI tests pass (`docker compose exec nestjs-api npm test -- --runInBand`)
+- [x] E2E tests pass (`docker compose exec nestjs-api npm run test:e2e`)
+- [x] Type check passes (`docker compose exec nestjs-api npx tsc --noEmit`)
+- [x] Lint passes (`docker compose exec nestjs-api npm run lint`)

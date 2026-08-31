@@ -358,6 +358,43 @@ describe('Videos (e2e)', () => {
       expect(body.upload_id).toBeUndefined();
     }, 180000);
 
+    it('lets the owner poll their own video while it is still processing', async () => {
+      const token = await registerAndLogin();
+      const initiated = await initiateUpload(token).expect(201);
+      const { publicId } = initiated.body as { publicId: string };
+
+      const response = await request(app.getHttpServer())
+        .get(`/videos/${publicId}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect((response.body as { status: string }).status).toBe(
+        VideoStatus.DRAFT,
+      );
+    }, 60000);
+
+    it('hides an unfinished video from a different authenticated channel', async () => {
+      const owner = await registerAndLogin();
+      const stranger = await registerAndLogin();
+      const initiated = await initiateUpload(owner).expect(201);
+      const { publicId } = initiated.body as { publicId: string };
+
+      await request(app.getHttpServer())
+        .get(`/videos/${publicId}`)
+        .set('Authorization', `Bearer ${stranger}`)
+        .expect(404);
+    }, 60000);
+
+    it('ignores a malformed token on the public route instead of rejecting', async () => {
+      const token = await registerAndLogin();
+      const publicId = await uploadAndProcess(token);
+
+      await request(app.getHttpServer())
+        .get(`/videos/${publicId}`)
+        .set('Authorization', 'Bearer not-a-real-token')
+        .expect(200);
+    }, 180000);
+
     it('returns 404 for an unknown public id', async () => {
       await request(app.getHttpServer()).get('/videos/doesNotExis').expect(404);
     }, 60000);
@@ -481,5 +518,62 @@ describe('Videos (e2e)', () => {
       );
       expect(thumb.status).toBe(200);
     }, 180000);
+  });
+
+  describe('authorization matrix', () => {
+    it('refuses anonymous access to every mutating endpoint', async () => {
+      const token = await registerAndLogin();
+      const initiated = await initiateUpload(token).expect(201);
+      const { videoId, uploadId } = initiated.body as {
+        videoId: string;
+        uploadId: string;
+      };
+
+      await request(app.getHttpServer())
+        .post('/videos/uploads')
+        .send({ filename: 'a.mp4', contentType: 'video/mp4', sizeBytes: 100 })
+        .expect(401);
+      await request(app.getHttpServer())
+        .post(`/videos/${videoId}/uploads/complete`)
+        .send({ uploadId, parts: [{ partNumber: 1, etag: 'x' }] })
+        .expect(401);
+      await request(app.getHttpServer())
+        .delete(`/videos/${videoId}/uploads`)
+        .expect(401);
+    }, 60000);
+
+    it("returns 404 when aborting another channel's upload", async () => {
+      const owner = await registerAndLogin();
+      const stranger = await registerAndLogin();
+      const initiated = await initiateUpload(owner).expect(201);
+      const { videoId } = initiated.body as { videoId: string };
+
+      await request(app.getHttpServer())
+        .delete(`/videos/${videoId}/uploads`)
+        .set('Authorization', `Bearer ${stranger}`)
+        .expect(404);
+    }, 60000);
+  });
+
+  describe('rate limiting', () => {
+    it('throttles the upload endpoint after the inherited per-minute limit', async () => {
+      const token = await registerAndLogin();
+      throttlerStorage.storage.clear();
+
+      const statuses: number[] = [];
+      for (let i = 0; i < 12; i++) {
+        const response = await request(app.getHttpServer())
+          .post('/videos/uploads')
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            filename: 'throttle.mp4',
+            contentType: 'video/mp4',
+            sizeBytes: 1024,
+          });
+        statuses.push(response.status);
+      }
+
+      expect(statuses).toContain(429);
+    }, 120000);
   });
 });

@@ -55,8 +55,8 @@
 
 ### SI-03.11 — Video Retrieval by Public URL
 - **Status:** completed
-- **Tests:** covered by videos.e2e-spec (see SI-03.12)
-- **Observations:** A video that is not `ready` answers 404 rather than exposing a partial record.
+- **Tests:** 4 unit (videos.service.spec `findForViewer`) + 4 e2e (videos.e2e-spec)
+- **Observations:** First implementation returned 404 for *everyone* on a non-ready video, which contradicted the plan's Authorization Matrix and left a real hole: after completing an upload the client had no way to poll processing status. Fixed by making `JwtAuthGuard` populate `request.user` on `@Public()` routes when a valid token happens to be present (absent or invalid tokens stay anonymous, never rejected), and adding `VideosService.findForViewer(publicId, userId?)` so an unfinished video resolves for its owning channel only.
 
 ### SI-03.12 — Streaming and Download Endpoints
 - **Status:** completed
@@ -65,8 +65,8 @@
 
 ### SI-03.13 — Authorization, Error Catalog, and OpenAPI Documentation
 - **Status:** completed
-- **Tests:** 7/7 passing (swagger.e2e-spec)
-- **Observations:** All six video endpoints are present in `openapi.json`. `test:e2e` never actually ran serially despite `CLAUDE.md` claiming it was configured — the new suite exposed it as cross-suite FK violations when suites truncated shared tables in parallel. Fixed with `maxWorkers: 1` in `test/jest-e2e.json`.
+- **Tests:** 7/7 passing (swagger.e2e-spec) + 3 e2e covering the authorization matrix and the inherited throttler
+- **Observations:** All six video endpoints are present in `openapi.json`. Every row of the Authorization Matrix is now exercised by a test rather than only documented, including anonymous rejection on all three mutating endpoints and a 429 from the inherited 10-per-minute throttler. `test:e2e` never actually ran serially despite `CLAUDE.md` claiming it was configured — the new suite exposed it as cross-suite FK violations when suites truncated shared tables in parallel. Fixed with `maxWorkers: 1` in `test/jest-e2e.json`.
 
 ### SI-03.14 — Inherited Lint Debt Cleanup
 - **Status:** completed
@@ -77,7 +77,7 @@
 
 | Check | Command | Result |
 |-------|---------|--------|
-| Unit + integration | `npm test -- --runInBand` | 240/240 passing, 36 suites |
-| E2E | `npm run test:e2e` | 71/71 passing, 4 suites |
+| Unit + integration | `npm test -- --runInBand` | 245/245 passing, 36 suites |
+| E2E | `npm run test:e2e` | 77/77 passing, 4 suites |
 | Type check | `npx tsc --noEmit` | exit 0 |
 | Lint | `npm run lint` | exit 0 |

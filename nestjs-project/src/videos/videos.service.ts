@@ -252,6 +252,28 @@ export class VideosService {
     return video;
   }
 
+  /**
+   * Resolves a video for whoever is asking. A video that has not finished
+   * processing is visible only to the channel that owns it, so its owner can
+   * poll upload progress while it stays undiscoverable to everyone else.
+   */
+  async findForViewer(publicId: string, userId?: string): Promise<Video> {
+    const video = await this.findByPublicId(publicId);
+    if (video.status === VideoStatus.READY) {
+      return video;
+    }
+
+    if (!userId) {
+      throw new VideoNotFoundException();
+    }
+
+    const channel = await this.channelsService.findByUserId(userId);
+    if (!channel || channel.id !== video.channel_id) {
+      throw new VideoNotFoundException();
+    }
+    return video;
+  }
+
   /** Resolves a video for public consumption; unfinished videos stay hidden. */
   async findReadyByPublicId(publicId: string): Promise<Video> {
     const video = await this.findByPublicId(publicId);

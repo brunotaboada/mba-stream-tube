@@ -1,3 +1,5 @@
+import { readdir } from 'fs/promises';
+import { tmpdir } from 'os';
 import { Job } from 'bullmq';
 import { VideoStatus } from '../entities/video-status.enum';
 import { VideoProcessingConsumer } from './video-processing.consumer';
@@ -63,6 +65,28 @@ describe('VideoProcessingConsumer', () => {
 
     expect(storage.getObjectStream).not.toHaveBeenCalled();
     expect(ffmpeg.probe).not.toHaveBeenCalled();
+  });
+
+  it('removes its scratch directory when processing fails', async () => {
+    const { consumer, storage } = build({
+      id: 'video-temp',
+      status: VideoStatus.PROCESSING,
+      storage_key: 'video-temp/source.mp4',
+    });
+    storage.getObjectStream.mockRejectedValue(new Error('storage unreachable'));
+    const before = (await readdir(tmpdir())).filter((entry) =>
+      entry.startsWith('video-video-temp-'),
+    );
+
+    await expect(consumer.process(job('video-temp'))).rejects.toThrow(
+      'storage unreachable',
+    );
+
+    const after = (await readdir(tmpdir())).filter((entry) =>
+      entry.startsWith('video-video-temp-'),
+    );
+    expect(after).toEqual(before);
+    expect(after).toHaveLength(0);
   });
 
   it('does not mark the video failed while attempts remain', async () => {

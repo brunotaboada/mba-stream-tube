@@ -348,6 +348,64 @@ describe('VideosService', () => {
       },
     );
 
+    it('returns a processing video to the channel that owns it', async () => {
+      const { service } = build({
+        repository: {
+          findOne: jest
+            .fn()
+            .mockResolvedValue(makeVideo({ status: VideoStatus.PROCESSING })),
+        },
+      });
+
+      await expect(
+        service.findForViewer('pub1234567', 'user-1'),
+      ).resolves.toMatchObject({ status: VideoStatus.PROCESSING });
+    });
+
+    it('hides a processing video from an anonymous viewer', async () => {
+      const { service } = build({
+        repository: {
+          findOne: jest
+            .fn()
+            .mockResolvedValue(makeVideo({ status: VideoStatus.PROCESSING })),
+        },
+      });
+
+      await expect(service.findForViewer('pub1234567')).rejects.toBeInstanceOf(
+        VideoNotFoundException,
+      );
+    });
+
+    it('hides a processing video from a different channel', async () => {
+      const { service } = build({
+        repository: {
+          findOne: jest
+            .fn()
+            .mockResolvedValue(makeVideo({ status: VideoStatus.PROCESSING })),
+        },
+        channels: {
+          findByUserId: jest.fn().mockResolvedValue({ id: 'other-channel' }),
+        },
+      });
+
+      await expect(
+        service.findForViewer('pub1234567', 'stranger'),
+      ).rejects.toBeInstanceOf(VideoNotFoundException);
+    });
+
+    it('returns a ready video to anyone without consulting channels', async () => {
+      const { service, channels } = build({
+        repository: {
+          findOne: jest
+            .fn()
+            .mockResolvedValue(makeVideo({ status: VideoStatus.READY })),
+        },
+      });
+
+      await expect(service.findForViewer('pub1234567')).resolves.toBeDefined();
+      expect(channels.findByUserId).not.toHaveBeenCalled();
+    });
+
     it('signs a download URL with a sanitised attachment filename', async () => {
       const { service, storage } = build({
         repository: {
