@@ -579,6 +579,7 @@
     },
     "/videos/{publicId}": {
       "get": {
+        "description": "Anonymous for a ready video. A video still being processed is returned only to the channel that owns it, so the owner can poll progress.",
         "operationId": "VideosController_findOne",
         "parameters": [
           {

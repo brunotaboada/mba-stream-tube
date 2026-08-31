@@ -103,13 +103,21 @@ export class VideosController {
 
   @Get(':publicId')
   @Public()
-  @ApiOperation({ summary: 'Get a video by its public identifier' })
+  @ApiOperation({
+    summary: 'Get a video by its public identifier',
+    description:
+      'Anonymous for a ready video. A video still being processed is returned ' +
+      'only to the channel that owns it, so the owner can poll progress.',
+  })
   @ApiResponse({ status: 200, type: VideoResponseDto })
   @ApiResponse({ status: 404, description: 'VIDEO_NOT_FOUND' })
   async findOne(
     @Param('publicId') publicId: string,
+    @CurrentUser() user?: JwtPayload,
   ): Promise<VideoResponseDto> {
-    const video = await this.videosService.findReadyByPublicId(publicId);
+    // Public route, but an owner presenting a valid token also sees their
+    // video while it is still processing.
+    const video = await this.videosService.findForViewer(publicId, user?.sub);
     const thumbnailUrl = video.thumbnail_key
       ? this.storageService.buildPublicUrl(
           this.storageService.thumbnailsBucket,
